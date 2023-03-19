@@ -13,14 +13,30 @@ class PottsL0Solver:
 
 	def applyHorizontally(self):
 		for i in range(0, self.mRow):
-			self.mImg[:,:,i,:] = L2Potts(self.mImg[:,:,i,:], self.mWeights[i,:], mGamma)
+			L2Potts(self.mImg[:,:,i,:], self.mWeights[i,:], self.mGamma)
 
 	def applyVertically(self):
 		for j in range(0, self.mCol):
-			self.mImg[:,:,:,j] = L2Potts(self.mImg[:,:,:,j], self.mWeights[:,j], mGamma)
+			L2Potts(self.mImg[:,:,:,j], self.mWeights[:,j], self.mGamma)
 
 	def applyDiag(self):
-		
+		for k in range(0, self.mCol):
+			L2Potts(self.mImg.diagonal(offset = k, dim1=-2, dim2=-1), self.mWeights(offset=k,dim1=-2,dim2=-1), self.mGamma)
+
+		for k in reversed(range(1, self.mRow)):
+			L2Potts(self.mImg.diagonal(offset = -k, dim1=-2, dim2=-1), self.mWeights(offset=-k, dim1=-2,dim2=-1), self.mGamma)
+
+	def applyantiDiag(self):
+		mImg_flipped = self.mImg.flip([0,2])
+		mWeights_flipped = self.mWeights.flip(dims=(0,))
+
+		for k in range(0, self.mCol):
+			L2Potts(self.mImg_flipped.diagonal(offset = k, dim1=-2, dim2=-1), self.mWeights_flipped(offset=k,dim1=-2,dim2=-1), self.mGamma)
+
+
+
+
+
 
 
 
