@@ -20,7 +20,7 @@ class L2Potts():
 
     # mData (1,3,n) n pixels 3 channel
 
-    def call(self):
+    def __call__(self):
         # get the data shape 1 x 3 x n (3 channels, n pixels)
         _, nVec, n = self.mData.shape
         arrJ = torch.zeros((n,), device=self.device)
