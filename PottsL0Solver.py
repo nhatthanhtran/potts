@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
-from L2potts import L2Potts
+from L2Potts import L2Potts
 class PottsL0Solver:
     def __init__(self, mImg, mWeights, mGamma):
         self.mImg = mImg
