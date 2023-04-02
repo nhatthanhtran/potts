@@ -9,11 +9,12 @@ class L2Potts():
         self.mGamma = gamma
         self.mExludedIntervalSize = 0
         self.device = device if device else 'cpu'
+        self.mExcludedIntervalSize = 0
     def setExcludedIntervalSize(self, excludedIntervalSize):
         self.mExcludedIntervalSize = excludedIntervalSize
 
     def getWeight(self, i):
-        if self.mWeights:
+        if self.mWeights is None:
             return 1
         else:
             return self.mWeights[i]
@@ -38,13 +39,15 @@ class L2Potts():
         w = torch.zeros((n+1,), device=self.device)
 
         s[0] = 0
-        wTemp, mTemp, wDiffTemp = None
+        wTemp = None
+        mTemp = None 
+        wDiffTemp = None
 
         for j in range(n):
             wTemp = self.getWeight(j)
             m[:,j+1] = torch.multiply(self.mData[0,:,j],wTemp)
             m[:,j+1] = m[:,j+1] + m[:,j]
-            s[j+1] = torch.sum(torch.pow(self.mData[0,:,j],2),dim=1)*wTemp + s[j]
+            s[j+1] = torch.sum(torch.pow(self.mData[0,:,j],2))*wTemp + s[j]
             w[j+1] = w[j] + wTemp
 
 
@@ -52,7 +55,7 @@ class L2Potts():
             arrP[r-1] = s[r] - self._normQuad(m[:,r], 0) / (w[r])
             arrJ[r-1] = 0
             for l in range(r- self.mExcludedIntervalSize,1,-1):
-                mTemp = torch.sum(torch.pow(m[:,r] - m[:,l-1],2), 1)
+                mTemp = torch.sum(torch.pow(m[:,r] - m[:,l-1],2),0)
             
                 wDiffTemp = w[r] - w[l-1]
                 if wDiffTemp == 0:
@@ -70,23 +73,23 @@ class L2Potts():
                     arrJ[r-1] = l-1
         
         r = n
-        l = arrJ[r-1]
+        l = int(arrJ[r-1])
         mu = torch.zeros((nVec,), device=self.device)
 
         while r > 0:
             mu = torch.divide(m[:,r] - m[:,l], (w[r] - w[l]))
             
             for k in range(nVec):
-                self.mData[:,1:r,k] = mu[k]
+                self.mData[:,k,1:r] = mu[k]
 
             r = l
             if r < 1:
                 break
-            l = arrJ[r-1]
+            l = int(arrJ[r-1])
 
         return self.mData
 
-    def _normQuad(x,sum_dim=1):
+    def _normQuad(self, x, sum_dim=1):
         return torch.sum(torch.pow(x,2),dim=sum_dim)
             
 

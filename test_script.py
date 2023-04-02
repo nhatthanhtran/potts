@@ -16,3 +16,8 @@ test_weights = torch.randn(200, 250)
 test_gamma = 1
 
 img = PottsL0Solver(test_torch1, test_weights, test_gamma)
+img.applyHorizontally()
+img.applyVertically()
+img.applyDiag()
+img1 = img.applyantiDiag()
+a = 1
