@@ -36,6 +36,10 @@ class PottsL0Solver:
         for k in range(0, self.mCol):
             l2potts = L2Potts(mImg_flipped.diagonal(offset = k, dim1=-2, dim2=-1), mWeights_flipped.diagonal(offset=k,dim1=-2,dim2=-1), self.mGamma)
             l2potts()
+            
+        for k in reversed(range(1, self.mRow)):
+            l2potts = L2Potts(mImg_flipped.diagonal(offset = -k, dim1=-2, dim2=-1), mWeights_flipped.diagonal(offset=-k, dim1=-2,dim2=-1), self.mGamma)
+            l2potts()
         
         # self.mImg = mImg_flipped.flip([0,2])
         return mImg_flipped.flip([0,2])
