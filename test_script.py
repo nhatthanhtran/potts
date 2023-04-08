@@ -10,11 +10,11 @@ import numpy as np
 import pandas as pd
 import torch
 from PottsL0Solver import PottsL0Solver
-from helper import minL2PottsADMM4
+from helper import minL2PottsADMM8
 test_torch1 = torch.randn(1,3, 200, 250)
 test_weights = torch.randn(200, 250)
 test_gamma = 1
-
+test_omega = torch.randn(2,)
 # img = PottsL0Solver(test_torch1, test_weights, test_gamma)
 # img.applyHorizontally()
 # img.applyVertically()
@@ -22,4 +22,4 @@ test_gamma = 1
 # img1 = img.applyantiDiag()
 # a = 1
 
-img2 = minL2PottsADMM4(test_torch1, test_gamma, test_weights, 1, 0.1, 0.1, False, False, True)
+img2 = minL2PottsADMM8(test_torch1, test_gamma, test_weights, 1, 0.1, 0.1, False, False, True,test_omega)

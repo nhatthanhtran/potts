@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PottsL0Solver import PottsL0Solver
 
-def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multiThreaded, useADMM, omega):
+def minL2PottsADMM8(img, gamma, weights, muInit, mustep, stopTol, verbose, multiThreaded, useADMM, omega):
     b, l, m, n  = img.shape
 
     u = torch.zeros(b, l, m, n)
@@ -58,7 +58,7 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
         #solve 1D Potts problems antidiagonally
         z = torch.divide(torch.multiply(img, weights) + 2*mu*(u+w+v) + 2*(lam3+lam5+lam6), weightsPrime)
         antidiag_proc = PottsL0Solver(z, weightsPrime, gammaPrimeD)
-        z = antidiag_proc()
+        z = antidiag_proc.applyantiDiag()
 
         #update Lagrange multiplier and calculate difference between u and v
 
@@ -85,16 +85,3 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
 
     return u
         
-
-
-
-
-
-
-
-
-
-
-
-
-    return 0
