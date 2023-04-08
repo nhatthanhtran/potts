@@ -1,17 +1,28 @@
 import torch
 import numpy as np
 from PottsL0Solver import PottsL0Solver
-def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multiThreaded, useADMM):
-    m, n, l = img.shape
 
-    u = torch.zeros(m, n, l)
+def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multiThreaded, useADMM, omega):
+    b, l, m, n  = img.shape
+
+    u = torch.zeros(b, l, m, n)
     v = img.clone()
-    lam = torch.zeros(m, n, l)
-    temp = torch.zeros(m, n, l)
+    w = img.clone()
+    z = img.clone()
+    lam1 = torch.zeros(b, l, m, n)
+    lam2 = torch.zeros(b, l, m, n)
+    lam3 = torch.zeros(b, l, m, n)
+    lam4 = torch.zeros(b, l, m, n)
+    lam5 = torch.zeros(b, l, m, n)
+    lam6 = torch.zeros(b, l, m, n)
+    # temp = torch.zeros(l, m, n)
     weightsPrime = torch.zeros(m, n)
     error = np.inf
     mu = muInit
-    gammaPrime = 0.0
+    gammaPrimeC = 0.0
+    gammaPrimeD = 0.0
+    omegaC, omegaD = omega
+
     nIter = 0
     fNorm = torch.sum(torch.pow(img, 2)) #PLACE HOLDER NEED TO CHANGE img.normQuad()
 
@@ -20,55 +31,46 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
 
     while (error >= stopTol * fNorm):
         # set Potts parameters
-        gammaPrime = 2*gamma
+        gammaPrimeC = 4.0*omegaC*gamma
+        gammaPrimeD = 4.0*omegaD*gamma
 
         #set weights
-        weightsPrime += mu 
+        weightsPrime = weights + 6*mu
 
         #solve horizontal univariate Potts problems
-        #COULD USE BROADCAST
-        for i in range(m):
-            for j in range(n):
-                for k in range(l):
-                    u[i,j,k] = (img[i,j,k]*weights[i,j] + v[i,j,k]*mu - lam[i,j,k]) / weightsPrime[i,j]
-        
-        # this is the broadcast?
-        # u = torch.divide((torch.multiply(img.permute(2,0,1), weights).permute(1,2,0) + v*mu + lam).permute(2,0,1), weightsPrime).permute(1,2,0)
-        #THIS COULD BE PROBLEMATIC BECAUSE WE WANT V TO CHANGE?
-        horizontal_proc = PottsL0Solver(u, weightsPrime, gammaPrime)
+        u = torch.divide((torch.multiply(img, weights) + 2*mu*(w + v + z) + 2*(-lam1 - lam2 - lam3)), weightsPrime)
+        #THIS COULD BE PROBLEMATIC BECAUSE WE WANT U TO CHANGE?
+        horizontal_proc = PottsL0Solver(u, weightsPrime, gammaPrimeC)
         horizontal_proc.applyHorizontally()
 
-        #solve for vertical univariate Potts problems
-        #COULD USE BROADCAST
-        for i in range(m):
-            for j in range(n):
-                for k in range(l):
-                    v[i,j,k] = (img[i,j,k]*weights[i,j] + u[i,j,k]*mu + lam[i,j,k]) / weightsPrime[i,j]
-        
-        # this is the broadcast?
-        # v = torch.divide((torch.multiply(img.permute(2,0,1), weights).permute(1,2,0) + u*mu + lam).permute(2,0,1), weightsPrime).permute(1,2,0)
+        #solve 1D Potts problems diagonally
+        w = torch.divide(torch.multiply(img, weights) + 2*mu*(u+v+z) + 2*(lam2 + lam4 -lam6), weightsPrime)
+        diagonal_proc = PottsL0Solver(w, weightsPrime, gammaPrimeD)
+        diagonal_proc.applyDiag()
 
+        #solve for vertical univariate Potts problems
+        v = torch.divide((torch.multiply(img, weights) + 2*mu*(u+w+z) + 2*(lam1-lam4-lam5)), weightsPrime)
+        
         #THIS COULD BE PROBLEMATIC BECAUSE WE WANT V TO CHANGE?
-        vertical_proc = PottsL0Solver(v, weightsPrime, gammaPrime)
+        vertical_proc = PottsL0Solver(v, weightsPrime, gammaPrimeC)
         vertical_proc.applyVertically()
 
+        #solve 1D Potts problems antidiagonally
+        z = torch.divide(torch.multiply(img, weights) + 2*mu*(u+w+v) + 2*(lam3+lam5+lam6), weightsPrime)
+        antidiag_proc = PottsL0Solver(z, weightsPrime, gammaPrimeD)
+        z = antidiag_proc()
+
         #update Lagrange multiplier and calculate difference between u and v
-        #COULD USE BROADCAST
-        error = 0
-        # for i in range(m):
-        #     for j in range(n):
-        #         for k in range(l):
-        #             temp[i,j,k] = u[i,j,k] - v[i,j,k]
-        
-        #             if useADMM:
-        #                 lam[i,j,k] = lam[i,j,k] + temp[i,j,k]
-                    
-        #             error += torch.pow(temp[i,j,k],2)
-        
-        # this is broadcasting
-        error = torch.sum(torch.pow(u-v, 2), )
+
+        error = torch.sum(torch.pow(u-v, 2), dim=None)
         if useADMM:
-            lam = lam + temp
+            lam1 = lam1 + mu*(u-v)
+            lam2 = lam2 + mu*(u-w)
+            lam3 = lam3 + mu*(u-z)
+            lam4 = lam4 + mu*(v-w)
+            lam5 = lam5 + mu*(v-z)
+            lam6 = lam6 + mu*(w-z)
+
         #update coupling
         mu *= mustep
 
