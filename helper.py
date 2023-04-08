@@ -13,7 +13,7 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
     mu = muInit
     gammaPrime = 0.0
     nIter = 0
-    fNorm = 0.1 #PLACE HOLDER NEED TO CHANGE img.normQuad()
+    fNorm = torch.sum(torch.pow(img, 2)) #PLACE HOLDER NEED TO CHANGE img.normQuad()
 
     if fNorm == 0:
         return img
@@ -32,6 +32,8 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
                 for k in range(l):
                     u[i,j,k] = (img[i,j,k]*weights[i,j] + v[i,j,k]*mu - lam[i,j,k]) / weightsPrime[i,j]
         
+        # this is the broadcast?
+        # u = torch.divide((torch.multiply(img.permute(2,0,1), weights).permute(1,2,0) + v*mu + lam).permute(2,0,1), weightsPrime).permute(1,2,0)
         #THIS COULD BE PROBLEMATIC BECAUSE WE WANT V TO CHANGE?
         horizontal_proc = PottsL0Solver(u, weightsPrime, gammaPrime)
         horizontal_proc.applyHorizontally()
@@ -42,6 +44,9 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
             for j in range(n):
                 for k in range(l):
                     v[i,j,k] = (img[i,j,k]*weights[i,j] + u[i,j,k]*mu + lam[i,j,k]) / weightsPrime[i,j]
+        
+        # this is the broadcast?
+        # v = torch.divide((torch.multiply(img.permute(2,0,1), weights).permute(1,2,0) + u*mu + lam).permute(2,0,1), weightsPrime).permute(1,2,0)
 
         #THIS COULD BE PROBLEMATIC BECAUSE WE WANT V TO CHANGE?
         vertical_proc = PottsL0Solver(v, weightsPrime, gammaPrime)
@@ -50,16 +55,20 @@ def minL2PottsADMM4(img, gamma, weights, muInit, mustep, stopTol, verbose, multi
         #update Lagrange multiplier and calculate difference between u and v
         #COULD USE BROADCAST
         error = 0
-        for i in range(m):
-            for j in range(n):
-                for k in range(l):
-                    temp[i,j,k] = u[i,j,k] - v[i,j,k]
+        # for i in range(m):
+        #     for j in range(n):
+        #         for k in range(l):
+        #             temp[i,j,k] = u[i,j,k] - v[i,j,k]
         
-                    if useADMM:
-                        lam[i,j,k] = lam[i,j,k] + temp[i,j,k]
+        #             if useADMM:
+        #                 lam[i,j,k] = lam[i,j,k] + temp[i,j,k]
                     
-                    error += torch.pow(temp[i,j,k],2)
-
+        #             error += torch.pow(temp[i,j,k],2)
+        
+        # this is broadcasting
+        error = torch.sum(torch.pow(u-v, 2), )
+        if useADMM:
+            lam = lam + temp
         #update coupling
         mu *= mustep
 
